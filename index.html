@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Notes DApp</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(180deg, #f0f4f8 0%, #d9e2ec 100%);
+            color: #333333;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        #web3-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            position: fixed;
+            width: 100%;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: #0288d1;
+            text-shadow: 0 0 8px rgba(2, 136, 209, 0.3);
+        }
+
+        .linkedin-btn {
+            font-size: 1.4rem;
+            color: #0288d1;
+            transition: transform 0.3s, color 0.3s;
+        }
+
+        .linkedin-btn:hover {
+            color: #7c4dff;
+            transform: scale(1.1);
+            text-shadow: 0 0 8px rgba(124, 77, 255, 0.3);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 80px 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            padding: 25px;
+            width: 100%;
+            max-width: 550px;
+            box-shadow: 0 0 15px rgba(2, 136, 209, 0.1);
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid #0288d1;
+            border-radius: 8px;
+            color: #333333;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input:focus {
+            border-color: #7c4dff;
+            box-shadow: 0 0 8px rgba(124, 77, 255, 0.3);
+        }
+
+        button {
+            padding: 12px;
+            background: linear-gradient(45deg, #0288d1, #7c4dff);
+            border: none;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 12px rgba(2, 136, 209, 0.4);
+        }
+
+        button i {
+            font-size: 1.2rem;
+        }
+
+        button .tooltip {
+            visibility: hidden;
+            background-color: #ffffff;
+            color: #333333;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .notes-list {
+            list-style: none;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .notes-list li {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #555555;
+            animation: slideIn 0.5s ease-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .notes-list li:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 8px rgba(2, 136, 209, 0.2);
+        }
+
+        .notes-list a {
+            color: #0288d1;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .notes-list a:hover {
+            text-decoration: underline;
+            color: #7c4dff;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            color: #0288d1;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #loading.active {
+            opacity: 1;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (max-width: 600px) {
+            header { padding: 12px 20px; }
+            header h1 { font-size: 1.4rem; }
+            .card { padding: 20px; }
+            .input-group { flex-direction: column; gap: 10px; }
+            button { width: 100%; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="web3-bg"></canvas>
+    <header>
+        <h1>Digital Notes DApp</h1>
+        <a href="https://www.linkedin.com/in/deny-arya-setiawan-224831246" target="_blank" class="linkedin-btn">
+            <i class="fab fa-linkedin"></i>
+        </a>
+    </header>
+    <div class="container">
+        <div class="card">
+            <h2 style="text-align: center; color: #0288d1; margin-bottom: 20px;">Tambah Catatan</h2>
+            <div class="input-group">
+                <input type="text" id="noteInput" placeholder="Masukkan catatan Anda...">
+                <button onclick="addNote()">
+                    <i class="fas fa-plus"></i>
+                    <span class="tooltip">Tambah Catatan</span>
+                </button>
+            </div>
+            <div id="loading">Memproses...</div>
+        </div>
+        <div class="card">
+            <h2 style="text-align: center; color: #0288d1; margin-bottom: 20px;">Daftar Catatan</h2>
+            <ul class="notes-list" id="notesList"></ul>
+        </div>
+    </div>
+
+    <script>
+        // Web3 Background Animation
+        const canvas = document.getElementById('web3-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const nodes = [];
+        const edges = [];
+        const nodeCount = 30;
+
+        class Node {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = 3;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(2, 136, 209, 0.8)';
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        function initNodes() {
+            for (let i = 0; i < nodeCount; i++) {
+                nodes.push(new Node());
+            }
+        }
+
+        function updateEdges() {
+            edges.length = 0;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 150) {
+                        edges.push({ from: nodes[i], to: nodes[j], distance });
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateEdges();
+            edges.forEach(edge => {
+                ctx.beginPath();
+                ctx.moveTo(edge.from.x, edge.from.y);
+                ctx.lineTo(edge.to.x, edge.to.y);
+                ctx.strokeStyle = `rgba(2, 136, 209, ${1 - edge.distance / 150})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+                ctx.closePath();
+            });
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        initNodes();
+        animate();
+
+        // Konfigurasi Web3 dengan MetaMask
+        const contractAddress = '0xCB01Ec4E7b03290D05b590dC4217BbCAD50A2b73'; 
+        const contractABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_content",
+				"type": "string"
+			}
+		],
+		"name": "addNote",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "content",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "bytes32",
+				"name": "txHash",
+				"type": "bytes32"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "noteIndex",
+				"type": "uint256"
+			}
+		],
+		"name": "NoteAdded",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_index",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_txHash",
+				"type": "bytes32"
+			}
+		],
+		"name": "updateNoteTxHash",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getNotes",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "string",
+						"name": "content",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "txHash",
+						"type": "bytes32"
+					}
+				],
+				"internalType": "struct DigitalNotes.Note[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "notes",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "content",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "txHash",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+        let web3, contract, accounts;
+
+        async function init() {
+            try {
+                if (window.ethereum) {
+                    web3 = new Web3(window.ethereum);
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    accounts = await web3.eth.getAccounts();
+                    web3.eth.defaultAccount = accounts[0];
+
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+                    console.log('Contract initialized:', contractAddress);
+
+                    // Dengarkan event NoteAdded untuk pembaruan real-time
+                    contract.events.NoteAdded({ fromBlock: 'latest' })
+                        .on('data', async event => {
+                            console.log('New note added:', event);
+                            await loadNotes();
+                        })
+                        .on('error', error => console.error('Event error:', error));
+
+                    await loadNotes();
+                } else {
+                    alert('Instal MetaMask untuk menggunakan DApp ini!');
+                }
+            } catch (error) {
+                console.error('Error initializing DApp:', error);
+                alert(`Gagal menginisialisasi DApp: ${error.message}`);
+            }
+        }
+
+        async function addNote() {
+            const content = document.getElementById('noteInput').value;
+            if (!content) {
+                alert('Masukkan catatan terlebih dahulu!');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').classList.add('active');
+            try {
+                console.log('Mengirim transaksi addNote:', content);
+                const gasEstimate = await contract.methods.addNote(content).estimateGas({ from: accounts[0] });
+                console.log('Gas estimate for addNote:', gasEstimate);
+
+                const nonce = await web3.eth.getTransactionCount(accounts[0], 'pending');
+                const tx = await contract.methods.addNote(content).send({
+                    from: accounts[0],
+                    gas: Math.round(gasEstimate * 1.2),
+                    gasPrice: Math.round(Number(await web3.eth.getGasPrice()) * 1.2),
+                    nonce: nonce
+                });
+                console.log('Transaksi addNote berhasil:', tx.transactionHash);
+
+                // Update txHash
+                const noteIndex = tx.events.NoteAdded.returnValues.noteIndex;
+                const updateGasEstimate = await contract.methods.updateNoteTxHash(noteIndex, tx.transactionHash).estimateGas({ from: accounts[0] });
+                await contract.methods.updateNoteTxHash(noteIndex, tx.transactionHash).send({
+                    from: accounts[0],
+                    gas: Math.round(updateGasEstimate * 1.2),
+                    gasPrice: Math.round(Number(await web3.eth.getGasPrice()) * 1.2),
+                    nonce: nonce + 1
+                });
+                console.log('txHash diperbarui:', tx.transactionHash);
+
+                document.getElementById('noteInput').value = '';
+                alert('Catatan berhasil ditambahkan!');
+                await loadNotes();
+            } catch (error) {
+                console.error('Error adding note:', error);
+                alert(`Gagal menambah catatan: ${error.message}`);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        async function loadNotes() {
+            try {
+                console.log('Memuat catatan...');
+                const notes = await contract.methods.getNotes().call();
+                console.log('Raw response from getNotes:', notes);
+                const notesList = document.getElementById('notesList');
+                notesList.innerHTML = '';
+                notes.forEach(note => {
+                    const txHash = note.txHash === '0x0000000000000000000000000000000000000000000000000000000000000000' ? 'Tidak tersedia' : note.txHash;
+                    const li = document.createElement('li');
+                    if (txHash === 'Tidak tersedia') {
+                        li.innerHTML = `
+                            ${note.content} 
+                            (by ${note.owner.slice(0, 6)}...${note.owner.slice(-4)} at ${new Date(note.timestamp * 1000).toLocaleString()}) 
+                            <br>Tx: Tidak tersedia
+                        `;
+                    } else {
+                        li.innerHTML = `
+                            ${note.content} 
+                            (by ${note.owner.slice(0, 6)}...${note.owner.slice(-4)} at ${new Date(note.timestamp * 1000).toLocaleString()}) 
+                            <br>Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(0, 6)}...${txHash.slice(-4)}</a>
+                        `;
+                    }
+                    notesList.appendChild(li);
+                });
+                console.log('Catatan berhasil dimuat:', notes);
+            } catch (error) {
+                console.error('Gagal memuat catatan:', error);
+                alert(`Gagal memuat catatan: ${error.message}`);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
